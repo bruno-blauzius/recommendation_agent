@@ -1,0 +1,19 @@
+[run]
+source =
+    infraestructure
+    agent
+    etl
+    schemas
+omit =
+    */__init__.py
+    */migrations/*
+    */.venv/*
+    */venv/*
+
+[report]
+fail_under = 90
+show_missing = true
+skip_covered = false
+
+[html]
+directory = htmlcov
