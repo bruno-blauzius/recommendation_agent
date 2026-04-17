@@ -28,9 +28,10 @@ repos:
     entry: trivy fs --exit-code 1 --severity HIGH,CRITICAL --ignorefile .trivyignore .
     pass_filenames: false
     always_run: true
-  # - id: pytest-coverage
-  #   name: Pytest with Coverage (>= 90%)
-  #   language: system
-  #   entry: pytest --tb=short
-  #   pass_filenames: false
-  #   always_run: true
+
+  - id: pytest-coverage
+    name: Pytest with Coverage (>= 90%)
+    language: system
+    entry: pytest --tb=short
+    pass_filenames: false
+    always_run: true
