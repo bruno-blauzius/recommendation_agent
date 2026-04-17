@@ -43,6 +43,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: config-ci
+    # IMPORTANT: Disable automatic analysis in SonarCloud
+    # Project Settings > Analysis method > Disable automatic/GitHub Actions analysis
+    # This workflow uses sonar-scanner CLI which handles the analysis
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,8 +62,8 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v6
         with:
           args: >
-            -Dsonar.projectKey=bruno-blauzius_recommendation_agent
-            -Dsonar.organization=bruno-blauzius-1
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
         env:
-          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
