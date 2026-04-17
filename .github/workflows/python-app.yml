@@ -42,6 +42,7 @@ jobs:
     name: SonarQube Analysis
     needs: build
     runs-on: ubuntu-latest
+    environment: confi-ci
     steps:
       - uses: actions/checkout@v4
         with:
