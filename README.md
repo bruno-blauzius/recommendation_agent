@@ -1,5 +1,5 @@
 # Recommendation Agent — Arquitetura de Dados para Seguro
-
+**Version:** 1.0.0
 ## Contexto
 
 Você tem dados brutos em múltiplas databases:
