@@ -14,3 +14,4 @@ A solução é composta por um pipeline de ETL, armazenamento em banco vetorial,
 |-----------|-----------|
 | [Arquitetura do Projeto](docs/recommendation_agent.md) | Visão geral da arquitetura, contexto e decisões de design |
 | [Pre-commit](docs/PRE_COMMIT.md) | Instalação, uso e cobertura dos hooks de qualidade e segurança |
+| [PostgresDatabase](docs/postgres.md) | Pool de conexões assíncrono com PostgreSQL — exemplos de uso |
