@@ -4,8 +4,6 @@ services:
     container_name: recommendation_agent
     env_file:
       - .env
-    ports:
-      - "8000:8000"
     volumes:
       - .:/app
     depends_on:

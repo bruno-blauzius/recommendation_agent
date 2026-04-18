@@ -38,9 +38,120 @@ jobs:
       run: |
         pytest --cov=infraestructure --cov=agent --cov=etl --cov=schemas --cov-report=xml
 
+
+  trivy-scan:
+    name: Trivy Security Scan
+    needs: build
+    runs-on: ubuntu-latest
+    environment: config-ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner (Filesystem)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+
+      - name: Upload Trivy filesystem results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+
+      - name: Build Docker image
+        run: |
+          docker build -t recommendation_agent:${{ github.sha }} .
+          docker tag recommendation_agent:${{ github.sha }} recommendation_agent:latest
+
+      - name: Run Trivy vulnerability scanner (Docker Image)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'image'
+          image-ref: 'recommendation_agent:latest'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+
+      - name: Upload Trivy image results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+
+  smoke-test:
+    name: Smoke Test
+    needs: trivy-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          cp .env.example .env
+
+      - name: Start services with Docker Compose
+        run: |
+          docker-compose up -d
+          echo "Waiting for services to be healthy..."
+          sleep 15
+
+      - name: Check PostgreSQL connectivity
+        run: |
+          echo "Testing PostgreSQL connection..."
+          docker-compose exec -T postgres-vector-db pg_isready -U postgres -d recommendation_agent
+          if [ $? -eq 0 ]; then
+            echo "✓ PostgreSQL is accepting connections"
+          else
+            echo "✗ PostgreSQL healthcheck failed"
+            exit 1
+          fi
+
+      - name: Check Redis connectivity
+        run: |
+          echo "Testing Redis connection..."
+          docker-compose exec -T redis redis-cli -a redis ping | grep -q PONG
+          if [ $? -eq 0 ]; then
+            echo "✓ Redis is responding"
+          else
+            echo "✗ Redis healthcheck failed"
+            exit 1
+          fi
+
+      - name: Verify pgvector extension
+        run: |
+          echo "Verifying pgvector extension availability..."
+          docker-compose exec -T postgres-vector-db psql -U postgres -d recommendation_agent -c "SELECT * FROM pg_available_extensions WHERE name = 'vector';" | grep -q vector
+          if [ $? -eq 0 ]; then
+            echo "✓ pgvector extension is available"
+          else
+            echo "✗ pgvector extension not found"
+            exit 1
+          fi
+
+      - name: Display service logs on failure
+        if: failure()
+        run: |
+          echo "=== PostgreSQL logs ==="
+          docker-compose logs postgres-vector-db
+          echo "=== Redis logs ==="
+          docker-compose logs redis
+
+      - name: Shutdown services
+        if: always()
+        run: |
+          docker-compose down -v
+
   sonarqube:
     name: SonarQube Analysis
-    needs: build
+    needs: trivy-scan
     runs-on: ubuntu-latest
     environment: config-ci
     # IMPORTANT: Disable automatic analysis in SonarCloud

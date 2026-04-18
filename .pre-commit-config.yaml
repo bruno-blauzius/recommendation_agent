@@ -23,11 +23,19 @@ repos:
 - repo: local
   hooks:
   - id: trivy-scan
-    name: Trivy Security Scan
+    name: Trivy Security Scan (Filesystem)
     language: system
     entry: trivy fs --exit-code 1 --severity HIGH,CRITICAL --ignorefile .trivyignore .
     pass_filenames: false
     always_run: true
+
+  - id: trivy-image
+    name: Trivy Security Scan (Docker Image)
+    language: system
+    entry: bash -c 'docker build -t recommendation_agent:latest . && trivy image --exit-code 1 --severity HIGH,CRITICAL recommendation_agent:latest'
+    pass_filenames: false
+    always_run: true
+    stages: [ manual ]
 
   - id: pytest-coverage
     name: Pytest with Coverage (>= 90%)
