@@ -47,16 +47,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Trivy v0.70.0
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin v0.70.0
+          trivy --version
+
       - name: Run Trivy vulnerability scanner (Filesystem)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '1'
-          ignore-unfixed: true
-          format: 'sarif'
-          output: 'trivy-fs-results.sarif'
+        run: |
+          trivy fs \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --format sarif \
+            --output trivy-fs-results.sarif \
+            .
 
       - name: Upload Trivy filesystem results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
@@ -70,15 +75,14 @@ jobs:
           docker tag recommendation_agent:${{ github.sha }} recommendation_agent:latest
 
       - name: Run Trivy vulnerability scanner (Docker Image)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: 'image'
-          image-ref: 'recommendation_agent:latest'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '1'
-          ignore-unfixed: true
-          format: 'sarif'
-          output: 'trivy-image-results.sarif'
+        run: |
+          trivy image \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --format sarif \
+            --output trivy-image-results.sarif \
+            recommendation_agent:latest
 
       - name: Upload Trivy image results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
