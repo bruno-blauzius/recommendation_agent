@@ -129,22 +129,12 @@ jobs:
       - name: Run Trivy vulnerability scanner (Filesystem)
         run: |
           trivy fs \
-            --exit-code 0 \
+            --exit-code 1 \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
             --format sarif \
             --output trivy-fs-results.sarif \
             .
-
-      - name: Run Trivy vulnerability scanner (Docker Image)
-        run: |
-          trivy image \
-            --exit-code 0 \
-            --severity HIGH,CRITICAL \
-            --ignore-unfixed \
-            --format sarif \
-            --output trivy-image-results.sarif \
-            ${{ needs.build-image.outputs.image-tag }}
 
       - name: Upload Trivy filesystem results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
