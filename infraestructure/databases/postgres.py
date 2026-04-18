@@ -1,4 +1,5 @@
 import asyncpg
+from typing import Any, Callable, Coroutine
 
 from infraestructure.databases.base import DatabaseAdapter
 
@@ -76,14 +77,32 @@ class PostgresDatabase(DatabaseAdapter):
         row = await self._get_pool().fetchrow(query, *args)
         return dict(row) if row else None
 
-    async def fetchval(self, query: str, *args):
+    async def fetchval(self, query: str, *args) -> Any:
         return await self._get_pool().fetchval(query, *args)
 
-    # ------------------------------------------------------------------
-    # Transaction support
-    # ------------------------------------------------------------------
-
-    async def execute_in_transaction(self, query: str, *args) -> None:
+    async def execute_in_transaction(
+        self,
+        query: str,
+        *args,
+    ) -> None:
+        """Execute a single query inside an explicit transaction."""
         async with self._get_pool().acquire() as conn:
             async with conn.transaction():
                 await conn.execute(query, *args)
+
+    async def run_in_transaction(
+        self,
+        operations: Callable[[asyncpg.Connection], Coroutine],
+    ) -> None:
+        """Execute multiple operations atomically.
+
+        Usage:
+            async def ops(conn):
+                await conn.execute(query1, *args1)
+                await conn.execute(query2, *args2)
+
+            await db.run_in_transaction(ops)
+        """
+        async with self._get_pool().acquire() as conn:
+            async with conn.transaction():
+                await operations(conn)
