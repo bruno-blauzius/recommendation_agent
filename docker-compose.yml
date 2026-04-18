@@ -4,8 +4,13 @@ services:
     container_name: recommendation_agent
     env_file:
       - .env
+    ports:
+      - "8000:8000"
     volumes:
       - .:/app
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
     depends_on:
       postgres-vector-db:
         condition: service_healthy
