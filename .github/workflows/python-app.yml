@@ -120,10 +120,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Trivy v0.70.0
+      - name: Install Trivy (latest)
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin v0.70.0
+            | sh -s -- -b /usr/local/bin
           trivy --version
 
       - name: Run Trivy vulnerability scanner (Filesystem)
