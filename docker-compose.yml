@@ -1,6 +1,7 @@
 services:
   recommendation_agent:
     build: .
+    image: ${RECOMMENDATION_AGENT_IMAGE:-recommendation_agent:local}
     container_name: recommendation_agent
     env_file:
       - .env

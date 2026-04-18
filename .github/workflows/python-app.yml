@@ -222,8 +222,10 @@ jobs:
         run: docker pull ${{ needs.build-image.outputs.image-tag }}
 
       - name: Start services with Docker Compose
+        env:
+          RECOMMENDATION_AGENT_IMAGE: ${{ needs.build-image.outputs.image-tag }}
         run: |
-          docker compose up -d
+          docker compose up -d --no-build
           echo "Waiting for services to be healthy..."
           sleep 15
 
