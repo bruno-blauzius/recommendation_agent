@@ -1,6 +1,6 @@
 from agents import Agent
 
-from agents.agent_adapter import AgentAdapter
+from agent_core.agent_adapter import AgentAdapter
 from agents.extensions.models.litellm_model import LitellmModel
 
 

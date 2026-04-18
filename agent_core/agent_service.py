@@ -4,7 +4,7 @@ from agents import Runner
 from agents.mcp import MCPServerStdio
 from litellm.exceptions import RateLimitError, InternalServerError
 
-from agents.agent_adapter import AgentAdapter
+from agent_core.agent_adapter import AgentAdapter
 
 
 class AgentService:

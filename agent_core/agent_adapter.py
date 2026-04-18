@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 
 from agents import Agent
 
-from agents.instructions import load_instructions
+from agent_core.instructions import load_instructions
 
 
 class AgentAdapter(metaclass=ABCMeta):

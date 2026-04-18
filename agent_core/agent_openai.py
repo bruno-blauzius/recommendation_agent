@@ -1,6 +1,6 @@
 from agents import Agent
 
-from agents.agent_adapter import AgentAdapter
+from agent_core.agent_adapter import AgentAdapter
 
 
 class AgentOpenAI(AgentAdapter):
