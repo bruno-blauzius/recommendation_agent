@@ -305,6 +305,8 @@ jobs:
           args: >
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.sources=infraestructure,agent,etl,schemas
+            -Dsonar.tests=tests
             -Dsonar.python.coverage.reportPaths=coverage-reports/coverage.xml
             -Dsonar.exclusions=coverage-reports/**
         env:
