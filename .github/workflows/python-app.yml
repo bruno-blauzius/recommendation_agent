@@ -12,41 +12,113 @@ on:
 permissions:
   contents: read
   security-events: write
+  packages: write
 
 jobs:
-  build:
-    name: Initialize and Test
+  # ================== BUILD IMAGE ==================
+  build-image:
+    name: Build & Push Docker Image
     runs-on: ubuntu-latest
-
+    outputs:
+      image-tag: ghcr.io/${{ github.repository }}:${{ github.sha }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.10"
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        pytest --cov=infraestructure --cov=agent --cov=etl --cov=schemas --cov-report=xml
+      - uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ================== TEST ==================
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-py${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-py${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Lint with flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Test with pytest
+        run: |
+          pytest \
+            --cov=infraestructure --cov=agent --cov=etl --cov=schemas \
+            --cov-report=xml \
+            --cov-report=html \
+            --junitxml=junit.xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-py${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov/
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-py${{ matrix.python-version }}
+          path: junit.xml
+
+  # ================== TRIVY SECURITY SCAN ==================
   trivy-scan:
     name: Trivy Security Scan
-    needs: build
+    needs: build-image
     runs-on: ubuntu-latest
     environment: config-ci
     steps:
       - uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Trivy v0.70.0
         run: |
@@ -71,11 +143,6 @@ jobs:
           sarif_file: 'trivy-fs-results.sarif'
           category: 'trivy-filesystem'
 
-      - name: Build Docker image
-        run: |
-          docker build -t recommendation_agent:${{ github.sha }} .
-          docker tag recommendation_agent:${{ github.sha }} recommendation_agent:latest
-
       - name: Run Trivy vulnerability scanner (Docker Image)
         run: |
           trivy image \
@@ -84,7 +151,7 @@ jobs:
             --ignore-unfixed \
             --format sarif \
             --output trivy-image-results.sarif \
-            recommendation_agent:latest
+            ${{ needs.build-image.outputs.image-tag }}
 
       - name: Upload Trivy image results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
@@ -93,9 +160,46 @@ jobs:
           sarif_file: 'trivy-image-results.sarif'
           category: 'trivy-image'
 
+      - name: Upload security reports as artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            trivy-fs-results.sarif
+            trivy-image-results.sarif
+
+  # ================== SBOM ==================
+  sbom:
+    name: Generate SBOM
+    needs: build-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ needs.build-image.outputs.image-tag }}
+          format: cyclonedx-json
+          output-file: sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          retention-days: 90
+
+  # ================== SMOKE TEST ==================
   smoke-test:
     name: Smoke Test
-    needs: trivy-scan
+    needs: build-image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -103,6 +207,16 @@ jobs:
       - name: Create .env file
         run: |
           cp .env.example .env
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull built image
+        run: docker pull ${{ needs.build-image.outputs.image-tag }}
 
       - name: Start services with Docker Compose
         run: |
@@ -156,9 +270,10 @@ jobs:
         run: |
           docker compose down -v
 
+  # ================== SONARQUBE ==================
   sonarqube:
     name: SonarQube Analysis
-    needs: trivy-scan
+    needs: [build-image, test]
     runs-on: ubuntu-latest
     environment: config-ci
     # IMPORTANT: Disable automatic analysis in SonarCloud
@@ -168,6 +283,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+
+      - name: Download coverage report (Python 3.10)
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-py3.10
+          path: coverage-reports
+
       - name: Debug - Check SONAR_TOKEN
         run: |
           if [ -z "${{ secrets.SONAR_TOKEN }}" ]; then
@@ -176,20 +298,22 @@ jobs:
           else
             echo "SONAR_TOKEN is set variable"
           fi
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         with:
           args: >
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.python.coverage.reportPaths=coverage-reports/coverage.xml
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-
+  # ================== SEND DEPLOY ==================
   send-deploy:
     name: Send Deploy Notification
-    needs: [smoke-test, sonarqube]
+    needs: [test, trivy-scan, sbom, smoke-test, sonarqube]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
