@@ -12,6 +12,7 @@ Cada GMUD documenta o objetivo, escopo, implementação, impacto e plano de roll
 | [GMUD-001](GMUD-001-refatoracao-infraestrutura.md) | Refatoração e Hardening da Camada de Infraestrutura | Melhoria / Correção de Bugs | 2026-04-18 | ✅ Implementado |
 | [GMUD-002](GMUD-002-remediacao-cve-agentes-ia.md) | Remediação de CVEs, Correção de Pipeline e Módulo de Agentes IA | Segurança / Correção / Melhoria | 2026-04-18 | ✅ Implementado |
 | [GMUD-003](GMUD-003-instructions-testes-remocao-api.md) | Instructions nos Agentes, Testes com Mock e Remoção da Camada HTTP | Melhoria / Correção / Remoção | 2026-04-18 | ✅ Implementado |
+| [GMUD-004](GMUD-004-node24-smoketest-image-reuse.md) | Migração para Node24 no CI e Reutilização de Imagem no Smoke Test | Melhoria / Correção de Pipeline | 2026-04-18 | ✅ Implementado |
 
 ---
 
@@ -37,3 +38,10 @@ Implementação do sistema de instructions por agente via YAML, correção do co
 
 **Resultado dos testes:** 44/44 passando, 0 warnings
 **Principais arquivos:** `agent_core/instructions/`, `agent_core/guardrails/`, `tests/agent_core/`, `main.py`
+
+---
+
+### GMUD-004 — Migração para Node24 no CI e Reutilização de Imagem no Smoke Test
+Opt-in antecipado para Node24 no GitHub Actions via `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` e correção do job `smoke-test` que recompilava a imagem ao invés de reutilizar a imagem publicada pelo job `build-image`.
+
+**Principais arquivos:** `.github/workflows/python-app.yml`, `docker-compose.yml`
