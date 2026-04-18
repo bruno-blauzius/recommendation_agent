@@ -106,14 +106,14 @@ jobs:
 
       - name: Start services with Docker Compose
         run: |
-          docker-compose up -d
+          docker compose up -d
           echo "Waiting for services to be healthy..."
           sleep 15
 
       - name: Check PostgreSQL connectivity
         run: |
           echo "Testing PostgreSQL connection..."
-          docker-compose exec -T postgres-vector-db pg_isready -U postgres -d recommendation_agent
+          docker compose exec -T postgres-vector-db pg_isready -U postgres -d recommendation_agent
           if [ $? -eq 0 ]; then
             echo "✓ PostgreSQL is accepting connections"
           else
@@ -124,7 +124,7 @@ jobs:
       - name: Check Redis connectivity
         run: |
           echo "Testing Redis connection..."
-          docker-compose exec -T redis redis-cli -a redis ping | grep -q PONG
+          docker compose exec -T redis redis-cli -a redis ping | grep -q PONG
           if [ $? -eq 0 ]; then
             echo "✓ Redis is responding"
           else
@@ -135,7 +135,7 @@ jobs:
       - name: Verify pgvector extension
         run: |
           echo "Verifying pgvector extension availability..."
-          docker-compose exec -T postgres-vector-db psql -U postgres -d recommendation_agent -c "SELECT * FROM pg_available_extensions WHERE name = 'vector';" | grep -q vector
+          docker compose exec -T postgres-vector-db psql -U postgres -d recommendation_agent -c "SELECT * FROM pg_available_extensions WHERE name = 'vector';" | grep -q vector
           if [ $? -eq 0 ]; then
             echo "✓ pgvector extension is available"
           else
@@ -147,14 +147,14 @@ jobs:
         if: failure()
         run: |
           echo "=== PostgreSQL logs ==="
-          docker-compose logs postgres-vector-db
+          docker compose logs postgres-vector-db
           echo "=== Redis logs ==="
-          docker-compose logs redis
+          docker compose logs redis
 
       - name: Shutdown services
         if: always()
         run: |
-          docker-compose down -v
+          docker compose down -v
 
   sonarqube:
     name: SonarQube Analysis
