@@ -1,6 +1,6 @@
 # Recommendation Agent
 
-**Version:** 1.0.0
+**Version:** 1.3.0
 
 Agente de recomendação de produtos de seguro baseado em LLM. O sistema processa dados de cotações e apólices, constrói uma base de conhecimento vetorial e expõe um agente capaz de recomendar produtos, coberturas e ações personalizadas ao segurado — consultando apenas conhecimento processado, sem acesso direto aos dados brutos.
 
@@ -16,6 +16,7 @@ A solução é composta por um pipeline de ETL, armazenamento em banco vetorial,
 | [Pre-commit](docs/PRE_COMMIT.md) | Instalação, uso e cobertura dos hooks de qualidade e segurança |
 | [PostgresDatabase](docs/postgres.md) | Pool de conexões assíncrono com PostgreSQL — exemplos de uso |
 | [Migrations](docs/migrations.md) | Sistema de migrations SQL — como criar e executar |
+| [Registro de Mudanças (GMUDs)](changes/README.md) | Histórico de todas as mudanças controladas aplicadas ao projeto |
 
 ---
 
