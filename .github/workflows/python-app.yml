@@ -221,46 +221,62 @@ jobs:
       - name: Pull built image
         run: docker pull ${{ needs.build-image.outputs.image-tag }}
 
-      - name: Start services with Docker Compose
+      - name: Start infrastructure services
         env:
           RECOMMENDATION_AGENT_IMAGE: ${{ needs.build-image.outputs.image-tag }}
         run: |
-          docker compose up -d --no-build
-          echo "Waiting for services to be healthy..."
-          sleep 15
-
-      - name: Check PostgreSQL connectivity
-        run: |
-          echo "Testing PostgreSQL connection..."
-          docker compose exec -T postgres-vector-db pg_isready -U postgres -d recommendation_agent
-          if [ $? -eq 0 ]; then
-            echo "✓ PostgreSQL is accepting connections"
-          else
-            echo "✗ PostgreSQL healthcheck failed"
-            exit 1
-          fi
-
-      - name: Check Redis connectivity
-        run: |
-          echo "Testing Redis connection..."
-          docker compose exec -T redis redis-cli -a redis ping | grep -q PONG
-          if [ $? -eq 0 ]; then
-            echo "✓ Redis is responding"
-          else
-            echo "✗ Redis healthcheck failed"
-            exit 1
-          fi
+          docker compose up -d --no-build --wait --timeout 60 postgres-vector-db redis
+          echo "✓ PostgreSQL and Redis are healthy"
 
       - name: Verify pgvector extension
         run: |
           echo "Verifying pgvector extension availability..."
-          docker compose exec -T postgres-vector-db psql -U postgres -d recommendation_agent -c "SELECT * FROM pg_available_extensions WHERE name = 'vector';" | grep -q vector
-          if [ $? -eq 0 ]; then
-            echo "✓ pgvector extension is available"
-          else
-            echo "✗ pgvector extension not found"
-            exit 1
-          fi
+          docker compose exec -T postgres-vector-db \
+            psql -U postgres -d recommendation_agent \
+            -c "SELECT name FROM pg_available_extensions WHERE name = 'vector';" \
+            | grep -q vector
+          echo "✓ pgvector extension is available"
+
+      - name: Verify agent image — imports and DB/Redis connectivity
+        env:
+          RECOMMENDATION_AGENT_IMAGE: ${{ needs.build-image.outputs.image-tag }}
+        run: |
+          docker run --rm --network recommendation_agent_default \
+            --env-file .env \
+            ${{ needs.build-image.outputs.image-tag }} \
+            python - <<'EOF'
+          import sys
+          # 1. Critical dependency imports
+          import agents
+          import litellm
+          import asyncpg
+          import yaml
+          import redis as redis_lib
+          print("✓ All dependencies imported successfully")
+
+          # 2. PostgreSQL connectivity
+          import asyncio, os
+          async def check_postgres():
+              conn = await asyncpg.connect(
+                  host=os.getenv("DB_HOST", "postgres-vector-db"),
+                  port=int(os.getenv("DB_PORT", 5432)),
+                  user=os.getenv("DB_USER", "postgres"),
+                  password=os.getenv("DB_PASSWORD", "postgres"),
+                  database=os.getenv("DB_NAME", "recommendation_agent"),
+              )
+              await conn.close()
+              print("✓ Agent connected to PostgreSQL")
+          asyncio.run(check_postgres())
+
+          # 3. Redis connectivity
+          r = redis_lib.Redis(
+              host=os.getenv("REDIS_HOST", "redis"),
+              port=int(os.getenv("REDIS_PORT", 6379)),
+              password=os.getenv("REDIS_PASSWORD", "redis"),
+          )
+          assert r.ping(), "Redis ping failed"
+          print("✓ Agent connected to Redis")
+          EOF
 
       - name: Display service logs on failure
         if: failure()
@@ -269,6 +285,8 @@ jobs:
           docker compose logs postgres-vector-db
           echo "=== Redis logs ==="
           docker compose logs redis
+          echo "=== Agent logs ==="
+          docker compose logs recommendation_agent || true
 
       - name: Shutdown services
         if: always()
