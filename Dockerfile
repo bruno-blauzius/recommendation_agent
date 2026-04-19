@@ -1,13 +1,21 @@
-FROM python:3.12
+FROM python:3.12-slim
 
-RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
-RUN PYTHONUNBUFFERED=1
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends gcc \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY . /app
-
+# Copy only dependency manifest first — this layer is cached
+# until requirements.txt changes, regardless of source code changes.
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD [ "python", "main.py" ]
+# Copy the rest of the source code (invalidates only this layer)
+COPY . .
+
+CMD ["python", "main.py"]
