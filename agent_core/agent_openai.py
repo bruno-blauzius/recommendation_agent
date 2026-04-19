@@ -1,4 +1,5 @@
 from agents import Agent
+from agents.extensions.models.litellm_model import LitellmModel
 
 from agent_core.agent_adapter import AgentAdapter
 
@@ -7,6 +8,7 @@ class AgentOpenAI(AgentAdapter):
 
     def __init__(self, name: str, model_name: str):
         super().__init__(name, model_name)
+        self._litellm_model = LitellmModel(model=model_name)
 
     def create_agent(
         self,
@@ -17,7 +19,7 @@ class AgentOpenAI(AgentAdapter):
         try:
             return Agent(
                 name=self.name,
-                model=self.model_name,
+                model=self._litellm_model,
                 instructions=self.instructions,
                 mcp_servers=mcp_servers or [],
                 input_guardrails=input_guardrails or [],

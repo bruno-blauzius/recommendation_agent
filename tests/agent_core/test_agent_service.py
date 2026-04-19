@@ -5,6 +5,12 @@ import pytest
 from agent_core.agent_service import AgentService
 
 
+@pytest.fixture(autouse=True)
+def _no_litellm_config():
+    with patch("agent_core.agent_service.configure_litellm"):
+        yield
+
+
 @pytest.fixture
 def mock_adapter():
     adapter = MagicMock()

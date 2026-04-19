@@ -10,7 +10,9 @@ INSTRUCTIONS = "You are a helpful assistant."
 @pytest.fixture
 def openai_adapter():
     with patch("agent_core.agent_adapter.load_instructions", return_value=INSTRUCTIONS):
-        yield AgentOpenAI(name="default", model_name="gpt-4o")
+        with patch("agent_core.agent_openai.LitellmModel") as MockLitellm:
+            MockLitellm.return_value = MagicMock(name="litellm_model_instance")
+            yield AgentOpenAI(name="default", model_name="gpt-4o")
 
 
 def test_init_stores_name_and_model(openai_adapter):
@@ -22,12 +24,24 @@ def test_init_stores_instructions(openai_adapter):
     assert openai_adapter.instructions == INSTRUCTIONS
 
 
+def test_init_wraps_model_in_litellm_model():
+    with patch("agent_core.agent_adapter.load_instructions", return_value=INSTRUCTIONS):
+        with patch("agent_core.agent_openai.LitellmModel") as MockLitellm:
+            mock_instance = MagicMock()
+            MockLitellm.return_value = mock_instance
+            adapter = AgentOpenAI(name="default", model_name="gpt-4o")
+
+    MockLitellm.assert_called_once_with(model="gpt-4o")
+    assert adapter._litellm_model is mock_instance
+
+
 def test_init_raises_when_instructions_not_found():
     with patch("agent_core.agent_adapter.load_instructions", return_value=""):
-        with pytest.raises(
-            ValueError, match="No instructions found for agent 'unknown'"
-        ):
-            AgentOpenAI(name="unknown", model_name="gpt-4o")
+        with patch("agent_core.agent_openai.LitellmModel"):
+            with pytest.raises(
+                ValueError, match="No instructions found for agent 'unknown'"
+            ):
+                AgentOpenAI(name="unknown", model_name="gpt-4o")
 
 
 def test_create_agent_returns_agent_instance(openai_adapter):
@@ -37,13 +51,22 @@ def test_create_agent_returns_agent_instance(openai_adapter):
 
     MockAgent.assert_called_once_with(
         name="default",
-        model="gpt-4o",
+        model=openai_adapter._litellm_model,
         instructions=INSTRUCTIONS,
         mcp_servers=[],
         input_guardrails=[],
         output_guardrails=[],
     )
     assert result is mock_agent
+
+
+def test_create_agent_uses_litellm_model_not_raw_string(openai_adapter):
+    with patch("agent_core.agent_openai.Agent") as MockAgent:
+        openai_adapter.create_agent()
+
+    passed_model = MockAgent.call_args.kwargs["model"]
+    assert passed_model is openai_adapter._litellm_model
+    assert passed_model is not openai_adapter.model_name
 
 
 def test_create_agent_passes_mcp_servers(openai_adapter):

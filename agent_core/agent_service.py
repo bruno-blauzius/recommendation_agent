@@ -5,12 +5,14 @@ from agents.mcp import MCPServerStdio
 from litellm.exceptions import RateLimitError, InternalServerError
 
 from agent_core.agent_adapter import AgentAdapter
+from agent_core.observability import configure_litellm
 
 
 class AgentService:
 
     def __init__(self, model_adapter: AgentAdapter):
         self.adapter = model_adapter
+        configure_litellm()
 
     async def invoke(
         self,
