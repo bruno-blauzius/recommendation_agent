@@ -13,6 +13,7 @@ Cada GMUD documenta o objetivo, escopo, implementação, impacto e plano de roll
 | [GMUD-002](GMUD-002-remediacao-cve-agentes-ia.md) | Remediação de CVEs, Correção de Pipeline e Módulo de Agentes IA | Segurança / Correção / Melhoria | 2026-04-18 | ✅ Implementado |
 | [GMUD-003](GMUD-003-instructions-testes-remocao-api.md) | Instructions nos Agentes, Testes com Mock e Remoção da Camada HTTP | Melhoria / Correção / Remoção | 2026-04-18 | ✅ Implementado |
 | [GMUD-004](GMUD-004-node24-smoketest-image-reuse.md) | Migração para Node24 no CI e Reutilização de Imagem no Smoke Test | Melhoria / Correção de Pipeline | 2026-04-18 | ✅ Implementado |
+| [GMUD-005](GMUD-005-remediacao-redos-pii-guardrail.md) | Remediação de ReDoS no Guardrail de PII | Segurança | 2026-04-19 | ✅ Implementado |
 
 ---
 
@@ -45,3 +46,10 @@ Implementação do sistema de instructions por agente via YAML, correção do co
 Opt-in antecipado para Node24 no GitHub Actions via `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` e correção do job `smoke-test` que recompilava a imagem ao invés de reutilizar a imagem publicada pelo job `build-image`.
 
 **Principais arquivos:** `.github/workflows/python-app.yml`, `docker-compose.yml`
+
+---
+
+### GMUD-005 — Remediação de ReDoS no Guardrail de PII
+Correção de vulnerabilidade ReDoS (CWE-1333) na regex de detecção de e-mail do guardrail de PII. A classe de caracteres do domínio incluía `.` causando sobreposição com o separador `\.` e backtracking polinomial. Corrigida com regex sem ambiguidade (limites RFC 5321/1035), pré-compilação em módulo e cap de 2.000 chars no input avaliado.
+
+**Principais arquivos:** `agent_core/guardrails/pii_guardrail.py`
