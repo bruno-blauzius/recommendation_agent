@@ -15,6 +15,7 @@ Cada GMUD documenta o objetivo, escopo, implementação, impacto e plano de roll
 | [GMUD-004](GMUD-004-node24-smoketest-image-reuse.md) | Migração para Node24 no CI e Reutilização de Imagem no Smoke Test | Melhoria / Correção de Pipeline | 2026-04-18 | ✅ Implementado |
 | [GMUD-005](GMUD-005-remediacao-redos-pii-guardrail.md) | Remediação de ReDoS no Guardrail de PII | Segurança | 2026-04-19 | ✅ Implementado |
 | [GMUD-006](GMUD-006-testes-services-cobertura-sonar-v1.4.0.md) | Testes do Módulo Services, Cobertura Sonar e Versão 1.4.0 | Melhoria / Qualidade | 2026-04-19 | ✅ Implementado |
+| [GMUD-007](GMUD-007-otimizacao-dockerfile-smoketest.md) | Otimização do Dockerfile e Pipeline do Smoke Test | Melhoria / Performance / Qualidade | 2026-04-19 | ✅ Implementado |
 
 ---
 
@@ -61,3 +62,10 @@ Correção de vulnerabilidade ReDoS (CWE-1333) na regex de detecção de e-mail 
 Suite de 8 testes com mock para `services/agent_with_mcp.py`, inclusão de `services` na cobertura do pytest/SonarQube/CI, correção de `--cov=agent` → `--cov=agent_core` e bump de versão para 1.4.0.
 
 **Principais arquivos:** `tests/services/`, `setup.cfg`, `.github/workflows/python-app.yml`, `sonar-project.properties`
+
+---
+
+### GMUD-007 — Otimização do Dockerfile e Pipeline do Smoke Test
+Reordenação das instruções do Dockerfile para maximizar o cache de layers (`COPY requirements.txt` antes do `COPY . .`), migração para `python:3.12-slim` (~130 MB vs ~1.2 GB), e refatoração do smoke test: substituição do `sleep 15` por `--wait`, remoção de steps redundantes e adição de validação real da imagem do agent (imports + conectividade com Postgres e Redis).
+
+**Principais arquivos:** `Dockerfile`, `.github/workflows/python-app.yml`
