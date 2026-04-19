@@ -14,6 +14,7 @@ Cada GMUD documenta o objetivo, escopo, implementação, impacto e plano de roll
 | [GMUD-003](GMUD-003-instructions-testes-remocao-api.md) | Instructions nos Agentes, Testes com Mock e Remoção da Camada HTTP | Melhoria / Correção / Remoção | 2026-04-18 | ✅ Implementado |
 | [GMUD-004](GMUD-004-node24-smoketest-image-reuse.md) | Migração para Node24 no CI e Reutilização de Imagem no Smoke Test | Melhoria / Correção de Pipeline | 2026-04-18 | ✅ Implementado |
 | [GMUD-005](GMUD-005-remediacao-redos-pii-guardrail.md) | Remediação de ReDoS no Guardrail de PII | Segurança | 2026-04-19 | ✅ Implementado |
+| [GMUD-006](GMUD-006-testes-services-cobertura-sonar-v1.4.0.md) | Testes do Módulo Services, Cobertura Sonar e Versão 1.4.0 | Melhoria / Qualidade | 2026-04-19 | ✅ Implementado |
 
 ---
 
@@ -53,3 +54,10 @@ Opt-in antecipado para Node24 no GitHub Actions via `FORCE_JAVASCRIPT_ACTIONS_TO
 Correção de vulnerabilidade ReDoS (CWE-1333) na regex de detecção de e-mail do guardrail de PII. A classe de caracteres do domínio incluía `.` causando sobreposição com o separador `\.` e backtracking polinomial. Corrigida com regex sem ambiguidade (limites RFC 5321/1035), pré-compilação em módulo e cap de 2.000 chars no input avaliado.
 
 **Principais arquivos:** `agent_core/guardrails/pii_guardrail.py`
+
+---
+
+### GMUD-006 — Testes do Módulo Services, Cobertura Sonar e Versão 1.4.0
+Suite de 8 testes com mock para `services/agent_with_mcp.py`, inclusão de `services` na cobertura do pytest/SonarQube/CI, correção de `--cov=agent` → `--cov=agent_core` e bump de versão para 1.4.0.
+
+**Principais arquivos:** `tests/services/`, `setup.cfg`, `.github/workflows/python-app.yml`, `sonar-project.properties`

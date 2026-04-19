@@ -87,7 +87,7 @@ jobs:
       - name: Test with pytest
         run: |
           pytest \
-            --cov=infraestructure --cov=agent --cov=etl --cov=schemas \
+            --cov=infraestructure --cov=agent_core --cov=etl --cov=schemas --cov=services \
             --cov-report=xml \
             --cov-report=html \
             --junitxml=junit.xml
@@ -310,7 +310,7 @@ jobs:
           args: >
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
-            -Dsonar.sources=infraestructure,agent_core,etl,schemas
+            -Dsonar.sources=infraestructure,agent_core,etl,schemas,services
             -Dsonar.tests=tests
             -Dsonar.python.coverage.reportPaths=coverage-reports/coverage.xml
             -Dsonar.exclusions=coverage-reports/**
