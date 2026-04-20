@@ -1,12 +1,23 @@
 import asyncio
 import logging
-import os
-
-# import signal
+import signal
+import sys
 
 from dotenv import load_dotenv
-from services.agent_with_mcp import agent_with_mcp
-from services.agent_recommendation_products import agent_recommendation_products
+
+from infraestructure.databases.redis import RedisDatabase
+from infraestructure.mensageria.rabbitmq import RabbitMQAdapter
+from services.consumer import MessageConsumer
+
+from settings import (
+    _ENVIRONMENT,
+    _RABBITMQ_DLX,
+    _RABBITMQ_PREFETCH,
+    _RABBITMQ_QUEUE,
+    _RABBITMQ_URL,
+    _REDIS_URL,
+    _AGENT_MAX_CONCURRENCY,
+)
 
 load_dotenv()
 
@@ -17,59 +28,60 @@ logging.basicConfig(
 )
 
 
-async def main(agent_type: str = "default", prompt: str = ""):
-    """Main entry point for the recommendation agent.
-    Args:
-        agent_type (str): The type of agent to run. Defaults to "default".
-        prompt (str): The prompt to provide to the agent. Defaults to an empty string.
+async def run_consumer() -> None:
+    """Entry point for pub/sub consumer mode.
+
+    Reads connection details from environment variables, builds the
+    infrastructure adapters, and starts the consumer loop.  Signal
+    handlers for SIGTERM and SIGINT request a graceful shutdown so
+    in-flight messages are finished before the process exits.
     """
+    rabbitmq_url = _RABBITMQ_URL
+    queue_name = _RABBITMQ_QUEUE
+    dead_letter_exchange = _RABBITMQ_DLX
+    prefetch_count = _RABBITMQ_PREFETCH
+    redis_url = _REDIS_URL
+    max_concurrency = _AGENT_MAX_CONCURRENCY
+
+    broker = RabbitMQAdapter(
+        url=rabbitmq_url,
+        queue_name=queue_name,
+        prefetch_count=prefetch_count,
+        dead_letter_exchange=dead_letter_exchange,
+    )
+    redis = RedisDatabase(url=redis_url)
+    consumer = MessageConsumer(
+        broker=broker,
+        redis=redis,
+        max_concurrency=max_concurrency,
+    )
+
+    loop = asyncio.get_running_loop()
+
+    def _request_shutdown() -> None:
+        logger.info("Shutdown signal received — draining in-flight messages…")
+        loop.create_task(consumer.stop())
+
+    # POSIX-only (Linux/macOS). Docker containers always run on Linux.
+    if sys.platform != "win32":
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, _request_shutdown)
+
     logger.info(
-        "Recommendation Agent starting (env=%s)", os.getenv("ENV", "development")
+        "Consumer starting (env=%s, queue=%s, concurrency=%d)",
+        _ENVIRONMENT,
+        queue_name,
+        max_concurrency,
     )
     try:
-        match agent_type:
-            case "default":
-                await agent_with_mcp(prompt)
-            case "recommendation_products":
-                await agent_recommendation_products(prompt)
-            case _:
-                raise ValueError(f"Unknown agent type: {agent_type}")
-
-        logger.info("Recommendation Agent finalized successfully")
-    except Exception as e:
-        logger.exception("An error occurred: %s", str(e))
+        await consumer.start()
+    except KeyboardInterrupt:
+        # Windows fallback — Ctrl+C raises KeyboardInterrupt instead of SIGINT.
+        logger.info("KeyboardInterrupt received — shutting down…")
+        await consumer.stop()
     finally:
-        logger.info("Recommendation Agent stopped")
+        logger.info("Consumer stopped.")
 
 
 if __name__ == "__main__":
-    """
-    Example of running the agent with a prompt.
-    The prompt asks for restaurant recommendations in New York City,
-    and instructs the agent to save the results in a JSON file using
-    the MCP file server.
-
-    TODO: implement graceful shutdown handling (e.g., catching SIGINT)
-    to allow the agent to clean up resources properly.
-    TODO: implement pub/sub or event system to trigger agent execution
-    based on external events instead of hardcoding the prompt in main.py.
-    """
-    prompt = """
-        What are some good restaurants in New York City?
-        Please provide the answer in a JSON format
-        with the following structure:
-            {
-                "restaurants": [
-                    {
-                        "name": "Restaurant Name",
-                        "cuisine": "Type of Cuisine",
-                        "address": "Restaurant Address",
-                        "rating": "Average Rating"
-                    },
-                    ...
-                ]
-            }
-        save results in a file named "nyc_restaurants.json"
-        using the provided MCP file server.
-    """
-    asyncio.run(main(agent_type="recommendation_products", prompt=prompt))
+    asyncio.run(run_consumer())

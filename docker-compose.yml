@@ -10,10 +10,19 @@ services:
     stdin_open: true
     tty: true
     restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672/
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-agent.tasks}
+      RABBITMQ_DLX: ${RABBITMQ_DLX:-agent.dlx}
+      RABBITMQ_PREFETCH: ${RABBITMQ_PREFETCH:-10}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis}@redis:6379/0
+      AGENT_MAX_CONCURRENCY: ${AGENT_MAX_CONCURRENCY:-10}
     depends_on:
       postgres-vector-db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   postgres-vector-db:
@@ -51,6 +60,24 @@ services:
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
   redis_data:
+  rabbitmq_data:

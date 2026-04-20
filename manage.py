@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 import sys
 from tabulate import tabulate
 
@@ -8,6 +7,7 @@ from dotenv import load_dotenv
 
 from infraestructure.migration_manager import run_migrations
 from infraestructure.databases.postgres import PostgresDatabase
+from settings import _DB_HOST, _DB_NAME, _DB_PASSWORD, _DB_PORT, _DB_USER
 
 load_dotenv()
 
@@ -21,21 +21,21 @@ logger = logging.getLogger(__name__)
 
 def get_database_url() -> str:
     """Get database URL from environment variables."""
-    user = os.getenv("DB_USER", "postgres")
-    password = os.getenv("DB_PASSWORD", "postgres")
-    host = os.getenv("DB_HOST", "localhost")
-    port = os.getenv("DB_PORT", "5432")
-    database = os.getenv("DB_NAME", "recommendation_agent")
+    user = _DB_USER
+    password = _DB_PASSWORD
+    host = _DB_HOST
+    port = _DB_PORT
+    database = _DB_NAME
 
     return f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
 
 def get_safe_database_url() -> str:
     """Get database URL with masked password for logging."""
-    user = os.getenv("DB_USER", "postgres")
-    host = os.getenv("DB_HOST", "localhost")
-    port = os.getenv("DB_PORT", "5432")
-    database = os.getenv("DB_NAME", "recommendation_agent")
+    user = _DB_USER
+    host = _DB_HOST
+    port = _DB_PORT
+    database = _DB_NAME
 
     return f"postgresql://{user}:***@{host}:{port}/{database}"
 
