@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import os
 import signal
+import socket
 import sys
 
 from dotenv import load_dotenv
@@ -21,11 +23,25 @@ from settings import (
 
 load_dotenv()
 
-logger = logging.getLogger("recommendation_agent")
+# Replica identifier — use explicit env var (Kubernetes pod name, ECS task ID…)
+# or fall back to container hostname (Docker assigns the short container ID).
+_REPLICA_ID = os.getenv("REPLICA_ID") or socket.gethostname()
+
+
+class _ReplicaFilter(logging.Filter):
+    """Injects ``replica_id`` into every log record so all modules log it."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.replica_id = _REPLICA_ID  # type: ignore[attr-defined]
+        return True
+
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format="%(asctime)s [%(replica_id)s] %(name)s %(levelname)s %(message)s",
 )
+logging.getLogger().addFilter(_ReplicaFilter())
+logger = logging.getLogger("recommendation_agent")
 
 
 async def run_consumer() -> None:

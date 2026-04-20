@@ -139,7 +139,7 @@ class RedisDatabase:
         ttl_seconds: int | None = None,
     ) -> None:
         """Serialize *value* as JSON and store it under *key*."""
-        await self.set(key, json.dumps(value, default=str), ttl_seconds)
+        await self.set(key, json.dumps(value), ttl_seconds)
 
     # ------------------------------------------------------------------
     # Job state — track processing status per message_id

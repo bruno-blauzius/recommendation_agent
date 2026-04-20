@@ -1,24 +1,14 @@
-from agents.mcp import MCPServerStdio
-
 from agent_core.agent_openai import AgentOpenAI
-
 from agent_core.agent_service import AgentService
+from agent_core.mcp_server.servers import _get_mcp_file_server
+from settings import _GPT_MODEL_TEXT
 
 
 async def agent_with_mcp(prompt: str):
-    agent_openai = AgentOpenAI(name="recommendation_agent", model_name="gpt-4o-mini")
-
-    async with MCPServerStdio(
-        params={
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
-        },
-        client_session_timeout_seconds=30,
-    ) as files_server:
-
-        agent_service = AgentService(model_adapter=agent_openai)
-
-        await agent_service.invoke(
-            prompt=prompt,
-            mcp_servers=[files_server],
-        )
+    files_server = await _get_mcp_file_server()
+    agent_openai = AgentOpenAI(name="recommendation_agent", model_name=_GPT_MODEL_TEXT)
+    agent_service = AgentService(model_adapter=agent_openai)
+    return await agent_service.invoke(
+        prompt=prompt,
+        mcp_servers=[files_server],
+    )

@@ -1,6 +1,7 @@
+import pytest
 from unittest.mock import mock_open, patch
 
-from agent_core.instructions import load_instructions
+from agent_core.instructions import _load_config, load_instructions
 
 FAKE_CONFIG = """
 default:
@@ -14,6 +15,14 @@ CONFIG_NO_DEFAULT = """
 cotacao:
   instructions: "You are a pricing agent."
 """
+
+
+@pytest.fixture(autouse=True)
+def clear_instructions_cache():
+    """Clear the lru_cache before each test so mock_open patches work correctly."""
+    _load_config.cache_clear()
+    yield
+    _load_config.cache_clear()
 
 
 def test_load_known_agent_returns_its_instructions():

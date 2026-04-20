@@ -25,3 +25,8 @@ _RABBITMQ_DLX = os.getenv("RABBITMQ_DLX", "agent.dlx")
 _RABBITMQ_PREFETCH = int(os.getenv("RABBITMQ_PREFETCH", "10"))
 _REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 _AGENT_MAX_CONCURRENCY = int(os.getenv("AGENT_MAX_CONCURRENCY", "10"))
+# Maximum wall-clock time (seconds) allowed for a single agent invocation.
+# Prevents a hung LLM call from blocking the worker indefinitely.
+_AGENT_DISPATCH_TIMEOUT = float(os.getenv("AGENT_DISPATCH_TIMEOUT_SECONDS", "300"))
+
+_GPT_MODEL_TEXT = os.getenv("GPT_MODEL_TEXT", "gpt-4o-mini")

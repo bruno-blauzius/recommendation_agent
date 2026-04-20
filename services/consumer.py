@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from infraestructure.databases.redis import RedisDatabase
 from infraestructure.mensageria.base import BrokerAdapter, BrokerMessage
+from settings import _AGENT_DISPATCH_TIMEOUT
 from schemas.message import AgentMessage, AgentType
 from services.agent_recommendation_products import agent_recommendation_products
 from services.agent_with_mcp import agent_with_mcp
@@ -111,7 +112,11 @@ class MessageConsumer:
             dedup_key, "1", ttl_seconds=_DEDUP_TTL_SECONDS
         )
         if not is_new:
-            logger.info("Duplicate message_id=%s — ack and skip", msg.message_id)
+            logger.info(
+                "Duplicate message_id=%s correlation_id=%s — ack and skip",
+                msg.message_id,
+                msg.correlation_id,
+            )
             await self._broker.ack(broker_msg)
             return
 
@@ -129,21 +134,33 @@ class MessageConsumer:
         try:
             match msg.agent_type:
                 case AgentType.DEFAULT:
-                    await agent_with_mcp(msg.prompt)
+                    await asyncio.wait_for(
+                        agent_with_mcp(msg.prompt),
+                        timeout=_AGENT_DISPATCH_TIMEOUT,
+                    )
                 case AgentType.RECOMMENDATION_PRODUCTS:
-                    await agent_recommendation_products(msg.prompt)
+                    await asyncio.wait_for(
+                        agent_recommendation_products(msg.prompt),
+                        timeout=_AGENT_DISPATCH_TIMEOUT,
+                    )
                 case _:
                     raise ValueError(f"Unknown agent_type: {msg.agent_type}")
 
             await self._redis.set_status(msg.message_id, "done")
             await self._broker.ack(broker_msg)
             logger.info(
-                "Processed message_id=%s agent_type=%s",
+                "Processed message_id=%s correlation_id=%s agent_type=%s",
                 msg.message_id,
+                msg.correlation_id,
                 msg.agent_type,
             )
 
         except Exception as exc:
-            logger.exception("Failed to process message_id=%s: %s", msg.message_id, exc)
+            logger.exception(
+                "Failed to process message_id=%s correlation_id=%s: %s",
+                msg.message_id,
+                msg.correlation_id,
+                exc,
+            )
             await self._redis.set_status(msg.message_id, "failed")
             await self._broker.nack(broker_msg, requeue=False)

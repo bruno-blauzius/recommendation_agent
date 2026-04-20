@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import agent_core.mcp_server.servers as _servers_module
 from services.agent_with_mcp import agent_with_mcp
 
 
@@ -21,6 +22,16 @@ def _make_mcp_server():
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def reset_mcp_singleton():
+    """Reset the process-level MCP singleton before each test."""
+    _servers_module._mcp_server = None
+    _servers_module._mcp_lock = None
+    yield
+    _servers_module._mcp_server = None
+    _servers_module._mcp_lock = None
 
 
 @pytest.fixture
@@ -54,7 +65,10 @@ async def test_invoke_is_called_with_prompt(
     prompt = "What restaurants are in NYC?"
 
     with (
-        patch("services.agent_with_mcp.MCPServerStdio", return_value=mock_mcp_server),
+        patch(
+            "agent_core.mcp_server.servers.MCPServerStdio",
+            return_value=mock_mcp_server,
+        ),
         patch("services.agent_with_mcp.AgentOpenAI", return_value=mock_agent_openai),
         patch("services.agent_with_mcp.AgentService", return_value=mock_agent_service),
     ):
@@ -71,7 +85,10 @@ async def test_mcp_server_is_passed_to_invoke(
 ):
     """The files_server returned by MCPServerStdio must be passed as mcp_servers."""
     with (
-        patch("services.agent_with_mcp.MCPServerStdio", return_value=mock_mcp_server),
+        patch(
+            "agent_core.mcp_server.servers.MCPServerStdio",
+            return_value=mock_mcp_server,
+        ),
         patch("services.agent_with_mcp.AgentOpenAI", return_value=mock_agent_openai),
         patch("services.agent_with_mcp.AgentService", return_value=mock_agent_service),
     ):
@@ -88,7 +105,10 @@ async def test_agent_openai_created_with_correct_name_and_model(
     """AgentOpenAI must be instantiated with name='recommendation_agent'
     and model_name='gpt-4o-mini'."""
     with (
-        patch("services.agent_with_mcp.MCPServerStdio", return_value=mock_mcp_server),
+        patch(
+            "agent_core.mcp_server.servers.MCPServerStdio",
+            return_value=mock_mcp_server,
+        ),
         patch("services.agent_with_mcp.AgentOpenAI") as mock_cls,
         patch("services.agent_with_mcp.AgentService", return_value=mock_agent_service),
     ):
@@ -106,7 +126,7 @@ async def test_mcp_server_stdio_created_with_filesystem_params(
 ):
     """MCPServerStdio must use npx + @modelcontextprotocol/server-filesystem."""
     with (
-        patch("services.agent_with_mcp.MCPServerStdio") as mock_stdio_cls,
+        patch("agent_core.mcp_server.servers.MCPServerStdio") as mock_stdio_cls,
         patch("services.agent_with_mcp.AgentOpenAI", return_value=mock_agent_openai),
         patch("services.agent_with_mcp.AgentService", return_value=mock_agent_service),
     ):
@@ -131,7 +151,10 @@ async def test_agent_service_constructed_with_adapter(
 ):
     """AgentService must receive the AgentOpenAI instance as model_adapter."""
     with (
-        patch("services.agent_with_mcp.MCPServerStdio", return_value=mock_mcp_server),
+        patch(
+            "agent_core.mcp_server.servers.MCPServerStdio",
+            return_value=mock_mcp_server,
+        ),
         patch("services.agent_with_mcp.AgentOpenAI", return_value=mock_agent_openai),
         patch("services.agent_with_mcp.AgentService") as mock_service_cls,
     ):
@@ -151,7 +174,10 @@ async def test_exception_from_invoke_propagates(mock_mcp_server, mock_agent_open
     broken_service.invoke = AsyncMock(side_effect=RuntimeError("LLM unavailable"))
 
     with (
-        patch("services.agent_with_mcp.MCPServerStdio", return_value=mock_mcp_server),
+        patch(
+            "agent_core.mcp_server.servers.MCPServerStdio",
+            return_value=mock_mcp_server,
+        ),
         patch("services.agent_with_mcp.AgentOpenAI", return_value=mock_agent_openai),
         patch("services.agent_with_mcp.AgentService", return_value=broken_service),
     ):
@@ -165,7 +191,10 @@ async def test_mcp_context_manager_entered(mock_agent_openai, mock_agent_service
     mcp_server = _make_mcp_server()
 
     with (
-        patch("services.agent_with_mcp.MCPServerStdio", return_value=mcp_server),
+        patch(
+            "agent_core.mcp_server.servers.MCPServerStdio",
+            return_value=mcp_server,
+        ),
         patch("services.agent_with_mcp.AgentOpenAI", return_value=mock_agent_openai),
         patch("services.agent_with_mcp.AgentService", return_value=mock_agent_service),
     ):
@@ -175,16 +204,21 @@ async def test_mcp_context_manager_entered(mock_agent_openai, mock_agent_service
     mcp_server.__aenter__.assert_awaited_once()
 
 
-async def test_mcp_context_manager_exited(mock_agent_openai, mock_agent_service):
-    """MCPServerStdio.__aexit__ must be called even when invoke succeeds."""
-    mcp_server = _make_mcp_server()
-
+async def test_mcp_server_reused_across_calls(mock_agent_openai, mock_agent_service):
+    """MCPServerStdio must be instantiated only once — reused on subsequent calls."""
     with (
-        patch("services.agent_with_mcp.MCPServerStdio", return_value=mcp_server),
+        patch("agent_core.mcp_server.servers.MCPServerStdio") as mock_stdio_cls,
         patch("services.agent_with_mcp.AgentOpenAI", return_value=mock_agent_openai),
         patch("services.agent_with_mcp.AgentService", return_value=mock_agent_service),
     ):
+        mcp_instance = _make_mcp_server()
+        mock_stdio_cls.return_value = mcp_instance
 
-        await agent_with_mcp("prompt")
+        await agent_with_mcp("first call")
+        await agent_with_mcp("second call")
 
-    mcp_server.__aexit__.assert_awaited_once()
+    # MCPServerStdio constructor and __aenter__ called exactly once — singleton
+    mock_stdio_cls.assert_called_once()
+    mcp_instance.__aenter__.assert_awaited_once()
+    # __aexit__ is never called — the server lives for the process lifetime
+    mcp_instance.__aexit__.assert_not_awaited()
