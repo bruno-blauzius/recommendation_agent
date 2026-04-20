@@ -225,8 +225,8 @@ jobs:
         env:
           RECOMMENDATION_AGENT_IMAGE: ${{ needs.build-image.outputs.image-tag }}
         run: |
-          docker compose up -d --no-build --wait --timeout 60 postgres-vector-db redis
-          echo "✓ PostgreSQL and Redis are healthy"
+          docker compose up -d --no-build --wait --timeout 60 postgres-vector-db redis rabbitmq
+          echo "✓ PostgreSQL, Redis and RabbitMQ are healthy"
 
       - name: Verify pgvector extension
         run: |
@@ -252,6 +252,7 @@ jobs:
           import asyncpg
           import yaml
           import redis as redis_lib
+          import aio_pika
           print("✓ All dependencies imported successfully")
 
           # 2. PostgreSQL connectivity
@@ -276,6 +277,18 @@ jobs:
           )
           assert r.ping(), "Redis ping failed"
           print("✓ Agent connected to Redis")
+
+          # 4. RabbitMQ connectivity
+          async def check_rabbitmq():
+              conn = await aio_pika.connect_robust(
+                  host=os.getenv("RABBITMQ_HOST", "rabbitmq"),
+                  port=int(os.getenv("RABBITMQ_PORT", 5672)),
+                  login=os.getenv("RABBITMQ_USER", "guest"),
+                  password=os.getenv("RABBITMQ_PASSWORD", "guest"),
+              )
+              await conn.close()
+              print("✓ Agent connected to RabbitMQ")
+          asyncio.run(check_rabbitmq())
           EOF
 
       - name: Display service logs on failure
@@ -285,6 +298,8 @@ jobs:
           docker compose logs postgres-vector-db
           echo "=== Redis logs ==="
           docker compose logs redis
+          echo "=== RabbitMQ logs ==="
+          docker compose logs rabbitmq
           echo "=== Agent logs ==="
           docker compose logs recommendation_agent || true
 
