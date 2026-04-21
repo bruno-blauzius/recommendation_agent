@@ -329,3 +329,58 @@ async def test_drain_waits_for_active_tasks():
 
     await consumer._drain()
     assert completed == [True]
+
+
+@pytest.mark.asyncio
+async def test_shutdown_signal_mid_loop_stops_before_next_message():
+    """Lines 71-72: shutdown event set between messages breaks the consume loop."""
+    msg1 = _make_broker_msg()
+    msg2 = _make_broker_msg()
+
+    broker = MagicMock()
+    broker.__aenter__ = AsyncMock(return_value=broker)
+    broker.__aexit__ = AsyncMock()
+    broker.ack = AsyncMock()
+    broker.nack = AsyncMock()
+
+    redis = _make_redis()
+    consumer = _make_consumer(broker, redis)
+
+    async def _consume_with_shutdown():
+        yield msg1
+        # Set shutdown before yielding the second message so the loop breaks.
+        consumer._shutdown_event.set()
+        yield msg2
+
+    broker.consume = MagicMock(return_value=_consume_with_shutdown())
+
+    with patch("services.consumer.agent_with_mcp", new=AsyncMock()):
+        await consumer.start()
+
+    # Only msg1 spawned a task (acked after drain); msg2 was never processed.
+    broker.ack.assert_awaited_once_with(msg1)
+    # nack must not have been called for msg2
+    for call_args in broker.nack.call_args_list:
+        assert call_args.args[0] is not msg2
+
+
+@pytest.mark.asyncio
+async def test_dispatch_unknown_agent_type_nacks_to_dlq():
+    """Lines 146-147: unknown agent_type falls through to case _ → ValueError → nack."""
+    broker = _make_broker()
+    redis = _make_redis()
+    consumer = _make_consumer(broker, redis)
+
+    unknown_msg = MagicMock()
+    unknown_msg.agent_type = "NONEXISTENT_TYPE"
+    unknown_msg.message_id = "unknown-id"
+    unknown_msg.correlation_id = "unknown-corr"
+    unknown_msg.prompt = "test"
+
+    broker_msg = _make_broker_msg()
+
+    await consumer._dispatch(unknown_msg, broker_msg)
+
+    redis.set_status.assert_any_await("unknown-id", "failed")
+    broker.nack.assert_awaited_once_with(broker_msg, requeue=False)
+    broker.ack.assert_not_awaited()

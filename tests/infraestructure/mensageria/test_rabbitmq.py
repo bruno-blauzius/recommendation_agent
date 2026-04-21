@@ -192,6 +192,12 @@ def test_get_queue_raises_when_not_connected():
         a._get_queue()
 
 
+def test_get_queue_returns_queue_when_connected(adapter):
+    # Line 107: return self._queue (happy path)
+    q = adapter._get_queue()
+    assert q is adapter._queue
+
+
 # ---------------------------------------------------------------------------
 # ack / nack
 # ---------------------------------------------------------------------------
@@ -296,6 +302,80 @@ async def test_ping_returns_false_after_disconnect(adapter):
 async def test_ping_returns_false_on_exception(adapter, mock_connection):
     type(mock_connection).is_closed = PropertyMock(side_effect=Exception("boom"))
     assert await adapter.ping() is False
+
+
+# ---------------------------------------------------------------------------
+# consume — async iterator / BrokerMessage mapping
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_consume_yields_broker_message_with_correct_fields(adapter):
+    """Lines 119-121: async for loop yields BrokerMessage mapped from raw message."""
+    raw = _make_raw_message(body='{"prompt": "test"}', message_id="id-42")
+    raw.headers = {"x-retry": "1"}
+
+    async def _iter():
+        yield raw
+
+    queue_mock = MagicMock()
+    queue_mock.iterator.return_value.__aenter__ = AsyncMock(return_value=_iter())
+    queue_mock.iterator.return_value.__aexit__ = AsyncMock(return_value=False)
+    adapter._queue = queue_mock
+
+    messages = []
+    async for msg in adapter.consume():
+        messages.append(msg)
+        break  # one message is enough
+
+    assert len(messages) == 1
+    m = messages[0]
+    assert m.body == '{"prompt": "test"}'
+    assert m.message_id == "id-42"
+    assert m.headers == {"x-retry": "1"}
+    assert m.raw is raw
+
+
+@pytest.mark.asyncio
+async def test_consume_yields_multiple_messages_in_order(adapter):
+    """consume() yields all messages from the queue in order."""
+    raws = [_make_raw_message(body=f"msg-{i}", message_id=f"id-{i}") for i in range(3)]
+
+    async def _iter():
+        for r in raws:
+            yield r
+
+    queue_mock = MagicMock()
+    queue_mock.iterator.return_value.__aenter__ = AsyncMock(return_value=_iter())
+    queue_mock.iterator.return_value.__aexit__ = AsyncMock(return_value=False)
+    adapter._queue = queue_mock
+
+    received = []
+    async for msg in adapter.consume():
+        received.append(msg)
+
+    assert [m.message_id for m in received] == ["id-0", "id-1", "id-2"]
+
+
+@pytest.mark.asyncio
+async def test_consume_handles_none_headers(adapter):
+    """headers=None in raw message → empty dict in BrokerMessage."""
+    raw = _make_raw_message()
+    raw.headers = None
+
+    async def _iter():
+        yield raw
+
+    queue_mock = MagicMock()
+    queue_mock.iterator.return_value.__aenter__ = AsyncMock(return_value=_iter())
+    queue_mock.iterator.return_value.__aexit__ = AsyncMock(return_value=False)
+    adapter._queue = queue_mock
+
+    messages = []
+    async for msg in adapter.consume():
+        messages.append(msg)
+
+    assert messages[0].headers == {}
 
 
 # ---------------------------------------------------------------------------

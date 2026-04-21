@@ -49,7 +49,7 @@ async def check_topic(
     output: TopicCheckOutput = result.final_output
     return GuardrailFunctionOutput(
         output_info=output,
-        tripwire_triggered=output.is_off_topic,  # True = bloqueia
+        tripwire_triggered=output.is_off_topic,
     )
 
 
