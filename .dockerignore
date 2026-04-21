@@ -1,0 +1,45 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*.pyo
+.pytest_cache
+.coverage
+.coveragerc
+htmlcov
+coverage.xml
+junit.xml
+
+# Virtual environments
+.venv
+venv
+env
+
+# Node
+node_modules
+
+# Docker
+.dockerignore
+docker-compose*.yml
+Dockerfile
+
+# CI / tooling
+.github
+.pre-commit-config.yaml
+sonar-project.properties
+.trivyignore
+pyproject.toml
+setup.cfg
+
+# Local config
+.env
+.env.*
+
+# Docs / changes
+README.md
+SETUP.md
+docs
+changes
