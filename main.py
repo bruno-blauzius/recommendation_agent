@@ -40,7 +40,9 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(replica_id)s] %(name)s %(levelname)s %(message)s",
 )
-logging.getLogger().addFilter(_ReplicaFilter())
+_replica_filter = _ReplicaFilter()
+for _handler in logging.getLogger().handlers:
+    _handler.addFilter(_replica_filter)
 logger = logging.getLogger("recommendation_agent")
 
 
