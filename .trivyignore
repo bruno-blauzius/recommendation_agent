@@ -1,2 +1,60 @@
-# Trivy ignore file - add known false positives or accepted risks below
-# Format: CVE-YYYY-XXXXX
+# Trivy ignore file — accepted risks with justification
+# Format: CVE-YYYY-XXXXX [expiry] [comment]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# @modelcontextprotocol/server-filesystem@2026.1.14 — transitive node_modules
+#
+# These CVEs are in packages bundled INSIDE the MCP filesystem server (a
+# third-party tool we don't own). They cannot be patched by us — the MCP server
+# locks its own dependency tree via package-lock.json. Mitigations in place:
+#   • The MCP server process runs as non-root (appuser)
+#   • Filesystem access is scoped to the current working directory only
+#   • The server is not exposed to untrusted external input
+# Action: re-evaluate when @modelcontextprotocol/server-filesystem releases a
+#         version with updated transitive dependencies.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# cross-spawn < 7.0.5 — ReDoS in shell argument parsing
+CVE-2024-21538
+
+# glob — vulnerability in path expansion
+CVE-2025-64756
+
+# minimatch — ReDoS / path traversal
+CVE-2026-26996
+CVE-2026-27903
+CVE-2026-27904
+
+# tar — path traversal / arbitrary file write
+CVE-2026-23745
+CVE-2026-23950
+CVE-2026-24842
+CVE-2026-26960
+CVE-2026-29786
+CVE-2026-31802
+
+# ──────────────────────────────────────────────────────────────────────────────
+# esbuild binary (Go 1.20.12) bundled by @modelcontextprotocol/server-filesystem
+#
+# esbuild is a JS bundler compiled with Go 1.20.12 and shipped as a prebuilt
+# binary inside the MCP server npm package. These stdlib CVEs affect the Go
+# runtime used to compile esbuild — we cannot upgrade the binary without a new
+# upstream release of esbuild or the MCP server package.
+# The esbuild binary is only used for bundling JS at build time; it is NOT
+# executed at runtime by our application.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Go stdlib — HTTP/2, encoding, net/* vulnerabilities
+CVE-2024-24790
+CVE-2025-68121
+CVE-2023-45288
+CVE-2024-34156
+CVE-2025-47907
+CVE-2025-58183
+CVE-2025-61726
+CVE-2025-61728
+CVE-2025-61729
+CVE-2026-25679
+CVE-2026-32280
+CVE-2026-32281
+CVE-2026-32283
