@@ -16,6 +16,8 @@ Cada GMUD documenta o objetivo, escopo, implementação, impacto e plano de roll
 | [GMUD-005](GMUD-005-remediacao-redos-pii-guardrail.md) | Remediação de ReDoS no Guardrail de PII | Segurança | 2026-04-19 | ✅ Implementado |
 | [GMUD-006](GMUD-006-testes-services-cobertura-sonar-v1.4.0.md) | Testes do Módulo Services, Cobertura Sonar e Versão 1.4.0 | Melhoria / Qualidade | 2026-04-19 | ✅ Implementado |
 | [GMUD-007](GMUD-007-otimizacao-dockerfile-smoketest.md) | Otimização do Dockerfile e Pipeline do Smoke Test | Melhoria / Performance / Qualidade | 2026-04-19 | ✅ Implementado |
+| [GMUD-008](GMUD-008-rabbitmq-mcp-singleton-escalabilidade.md) | RabbitMQ, MCP Singleton e Melhorias de Escalabilidade | Melhoria / Performance / Escalabilidade | 2026-04-20 | ✅ Implementado |
+| [GMUD-009](GMUD-009-seguranca-observabilidade-lgpd-testes.md) | Segurança, Observabilidade, Guardrails LGPD e Cobertura de Testes | Segurança / Qualidade / Conformidade | 2026-04-21 | ✅ Implementado |
 
 ---
 
@@ -69,3 +71,50 @@ Suite de 8 testes com mock para `services/agent_with_mcp.py`, inclusão de `serv
 Reordenação das instruções do Dockerfile para maximizar o cache de layers (`COPY requirements.txt` antes do `COPY . .`), migração para `python:3.12-slim` (~130 MB vs ~1.2 GB), e refatoração do smoke test: substituição do `sleep 15` por `--wait`, remoção de steps redundantes e adição de validação real da imagem do agent (imports + conectividade com Postgres e Redis).
 
 **Principais arquivos:** `Dockerfile`, `.github/workflows/python-app.yml`
+
+---
+
+### GMUD-008 — RabbitMQ, MCP Singleton e Melhorias de Escalabilidade
+Evolução da arquitetura de síncrona (request/response) para assíncrona via pub/sub com RabbitMQ. Implementação de camada de mensageria desacoplada com adapter padrão (`BrokerAdapter`), suporte a Dead Letter Exchange, deduplicação via Redis SETNX, controle de concorrência com `asyncio.Semaphore` e shutdown gracioso com drenagem de in-flight messages. Singleton do MCP server e cache de instruções eliminam overhead de instanciação por mensagem. Observabilidade por réplica via `REPLICA_ID`.
+
+**Commits:** `74abf3d`, `1f70462`
+**Resultado dos testes:** 210 testes passando, cobertura ≥ 90%
+**Principais arquivos:** `infraestructure/mensageria/rabbitmq.py`, `infraestructure/databases/redis.py`, `schemas/message.py`, `services/consumer.py`, `agent_core/mcp_server/servers.py`, `main.py`, `docker-compose.yml`
+
+| Componente | Detalhe |
+|---|---|
+| `RabbitMQAdapter` | Conexão robusta (auto-reconnect), QoS/prefetch, ack/nack manual, DLX |
+| `RedisDatabase` | Pool de conexões, SETNX para deduplicação, TTL por chave de status |
+| `MessageConsumer` | Semáforo de concorrência, shutdown event, drenagem de tasks |
+| `AgentMessage` | Schema Pydantic validado — prompt, agent_type, priority, correlation_id |
+| MCP Singleton | Instância única por processo, criada uma vez no startup |
+| Instruções cacheadas | YAML lido uma vez e reutilizado em todas as chamadas |
+
+---
+
+### GMUD-009 — Segurança, Observabilidade, Guardrails LGPD e Cobertura de Testes
+Consolidação de correções de segurança, bugs de runtime e conformidade LGPD descobertos durante os testes funcionais end-to-end após o GMUD-008.
+
+**Commits:** `6ffe79f`, `66c9ab8`, `441ffb1`, `7e8a226`, `4775a82`, `15ea9a7`
+**Resultado dos testes:** 56 novos testes adicionados (16 consumer, 28 RabbitMQ, 12 guardrails LGPD)
+**Trivy scan:** exit 0 — 0 CVEs HIGH/CRITICAL
+
+**Bugs corrigidos:**
+
+| Bug | Causa | Correção |
+|---|---|---|
+| `ValueError: replica_id not found in record` | Filtro de logging adicionado ao logger, não ao handler | `handler.addFilter()` para todos os handlers do root logger |
+| `AuthenticationError` (Redis) | `_REDIS_URL` construída sem senha | `_build_redis_url()` lê `REDIS_URL` do env ou inclui `REDIS_PASSWORD` |
+| `EACCES: mkdir '/home/appuser'` (npm runtime) | `useradd --no-create-home` | `useradd --create-home` + `HOME` e `npm_config_cache` explícitos |
+| `PRECONDITION_FAILED` (RabbitMQ DLX) | `send_message_broker.py` redeclarava fila sem `x-dead-letter-exchange` | `passive=True` na declaração — só verifica existência |
+
+**Principais arquivos:** `Dockerfile`, `.dockerignore`, `.trivyignore`, `agent_core/guardrails/legpd_guardrails.py`, `main.py`, `services/consumer.py`, `settings.py`, `send_message_broker.py`
+
+| Componente | Detalhe |
+|---|---|
+| Dockerfile multi-stage | Stage `builder` (gcc) → stage `runtime` (slim, sem gcc, non-root) |
+| `.dockerignore` | Exclui `.env`, `.git`, `venv`, `tests`, `docs`, `changes` do build context |
+| `.trivyignore` | 24 CVEs em deps transitivas do MCP server — documentados com justificativa |
+| Guardrail `check_topic` | Input guardrail — bloqueia solicitações de dados pessoais (CPF, email, telefone) |
+| Guardrail `check_output` | Output guardrail — bloqueia respostas com senhas, tokens, documentos |
+| `send_message_broker.py` | Script local para envio de mensagens de teste ao RabbitMQ no Docker |
