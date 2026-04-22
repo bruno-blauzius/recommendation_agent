@@ -44,7 +44,14 @@ RUN npm install -g @modelcontextprotocol/server-filesystem@2026.1.14 \
 COPY --from=builder /venv /venv
 
 # Run as a non-root user (OWASP least-privilege principle)
-RUN useradd --no-create-home --shell /bin/false appuser
+# --create-home ensures npm/Node tools can write to ~/.npm at runtime
+RUN useradd --create-home --shell /bin/false appuser
+
+# Pre-configure npm cache to a directory owned by appuser so that any
+# runtime npx/npm call (e.g. MCP server-filesystem launch) does not try
+# to write to root-owned paths.
+ENV HOME=/home/appuser \
+    npm_config_cache=/home/appuser/.npm
 
 WORKDIR /app
 COPY . .

@@ -19,14 +19,27 @@ _DB_NAME = os.getenv("DB_NAME", "recommendation_agent")
 
 _REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 _REDIS_PORT = os.getenv("REDIS_PORT", "6379")
+_REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
 _REDIS_DB = os.getenv("REDIS_DB", "0")
+
+
+# REDIS_URL takes precedence when explicitly set; otherwise build from parts.
+def _build_redis_url() -> str:
+    url = os.getenv("REDIS_URL")
+    if url:
+        return url
+    if _REDIS_PASSWORD:
+        return f"redis://:{_REDIS_PASSWORD}@{_REDIS_HOST}:{_REDIS_PORT}/{_REDIS_DB}"
+    return f"redis://{_REDIS_HOST}:{_REDIS_PORT}/{_REDIS_DB}"
+
+
+_REDIS_URL = _build_redis_url()
 
 # RABBITMQ
 _RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost/")
 _RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "agent.tasks")
 _RABBITMQ_DLX = os.getenv("RABBITMQ_DLX", "agent.dlx")
 _RABBITMQ_PREFETCH = int(os.getenv("RABBITMQ_PREFETCH", "10"))
-_REDIS_URL = f"redis://{_REDIS_HOST}:{_REDIS_PORT}/{_REDIS_DB}"
 _AGENT_MAX_CONCURRENCY = int(os.getenv("AGENT_MAX_CONCURRENCY", "10"))
 # Maximum wall-clock time (seconds) allowed for a single agent invocation.
 # Prevents a hung LLM call from blocking the worker indefinitely.

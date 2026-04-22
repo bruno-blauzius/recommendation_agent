@@ -73,6 +73,7 @@ class MessageConsumer:
                 task = asyncio.create_task(self._handle(broker_msg))
                 self._active_tasks.add(task)
                 task.add_done_callback(self._active_tasks.discard)
+                task.add_done_callback(self._log_task_exception)
 
             await self._drain()
         logger.info("MessageConsumer stopped")
@@ -86,6 +87,15 @@ class MessageConsumer:
     # Internal
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _log_task_exception(task: asyncio.Task) -> None:
+        """Callback that surfaces unhandled exceptions from handler tasks."""
+        if not task.cancelled() and not task.exception() is None:
+            logger.error(
+                "Unhandled exception in message handler task",
+                exc_info=task.exception(),
+            )
+
     async def _drain(self) -> None:
         """Wait for all in-flight tasks to complete."""
         if self._active_tasks:
@@ -94,6 +104,7 @@ class MessageConsumer:
 
     async def _handle(self, broker_msg: BrokerMessage) -> None:
         """Parse, deduplicate and dispatch a single broker message."""
+        logger.info("Message received — broker_message_id=%s", broker_msg.message_id)
         # 1. Parse envelope
         try:
             msg = AgentMessage.model_validate_json(broker_msg.body)
@@ -120,6 +131,12 @@ class MessageConsumer:
             await self._broker.ack(broker_msg)
             return
 
+        logger.info(
+            "Processing message_id=%s correlation_id=%s agent_type=%s",
+            msg.message_id,
+            msg.correlation_id,
+            msg.agent_type,
+        )
         # 3. Mark as processing
         await self._redis.set_status(
             msg.message_id, "processing", ttl_seconds=_STATUS_TTL_SECONDS
