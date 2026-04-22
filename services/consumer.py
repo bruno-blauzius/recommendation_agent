@@ -160,6 +160,10 @@ class MessageConsumer:
                         agent_recommendation_products(msg.prompt),
                         timeout=_AGENT_DISPATCH_TIMEOUT,
                     )
+                case AgentType.CUSTOM:
+                    raise NotImplementedError(
+                        "Custom agent_type is not implemented yet"
+                    )
                 case _:
                     raise ValueError(f"Unknown agent_type: {msg.agent_type}")
 

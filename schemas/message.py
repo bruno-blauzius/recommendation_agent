@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 class AgentType(str, Enum):
     DEFAULT = "default"
     RECOMMENDATION_PRODUCTS = "recommendation_products"
+    CUSTOM = "custom"
 
 
 class MessagePriority(str, Enum):
