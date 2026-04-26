@@ -1,4 +1,4 @@
-from agents import Agent
+from agents import Agent, ModelSettings
 from agents.extensions.models.litellm_model import LitellmModel
 
 from agent_core.agent_adapter import AgentAdapter
@@ -26,6 +26,7 @@ class AgentOpenAI(AgentAdapter):
                 input_guardrails=input_guardrails or [],
                 output_guardrails=output_guardrails or [],
                 tools=tools or [],
+                model_settings=ModelSettings(temperature=0.1),
             )
         except Exception as e:
             raise RuntimeError(f"Failed to create OpenAI agent: {str(e)}")

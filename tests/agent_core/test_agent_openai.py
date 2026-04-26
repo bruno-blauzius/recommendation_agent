@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from agents import ModelSettings
 
 from agent_core.agent_openai import AgentOpenAI
 
@@ -57,6 +58,7 @@ def test_create_agent_returns_agent_instance(openai_adapter):
         input_guardrails=[],
         output_guardrails=[],
         tools=[],
+        model_settings=ModelSettings(temperature=0.1),
     )
     assert result is mock_agent
 
@@ -66,8 +68,11 @@ def test_create_agent_uses_litellm_model_not_raw_string(openai_adapter):
         openai_adapter.create_agent()
 
     passed_model = MockAgent.call_args.kwargs["model"]
+    model_settings = MockAgent.call_args.kwargs["model_settings"]
     assert passed_model is openai_adapter._litellm_model
     assert passed_model is not openai_adapter.model_name
+    assert isinstance(model_settings, ModelSettings)
+    assert model_settings.temperature == 0.1
 
 
 def test_create_agent_passes_mcp_servers(openai_adapter):
