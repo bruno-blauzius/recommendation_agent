@@ -317,20 +317,24 @@ async def _fetch_products_rank(postgres: PostgresDatabase) -> dict[int, list[dic
                 cliente_id,
                 ramo,
                 nome_produto,
+                seguradora,
+                logo_url,
                 COUNT(*) AS cnt
             FROM cotacoes
-            GROUP BY cliente_id, ramo, nome_produto
+            GROUP BY cliente_id, ramo, nome_produto, seguradora, logo_url
         ),
         produto_ranked AS (
             SELECT
                 cliente_id,
                 ramo,
                 nome_produto,
+                seguradora,
+                logo_url,
                 cnt,
                 SUM(cnt) OVER (PARTITION BY cliente_id) AS total_cnt,
                 ROW_NUMBER() OVER (
                     PARTITION BY cliente_id
-                    ORDER BY cnt DESC, nome_produto, ramo
+                    ORDER BY cnt DESC, nome_produto, ramo, seguradora
                 ) AS rn
             FROM produto_counts
         )
@@ -340,9 +344,11 @@ async def _fetch_products_rank(postgres: PostgresDatabase) -> dict[int, list[dic
                 jsonb_build_object(
                     'produto', nome_produto,
                     'ramo', ramo,
+                    'seguradora', seguradora,
+                    'logo_url', logo_url,
                     'score', ROUND((cnt::numeric / NULLIF(total_cnt, 0)), 4)
                 )
-                ORDER BY cnt DESC, nome_produto, ramo
+                ORDER BY cnt DESC, nome_produto, ramo, seguradora
             ) AS produtos_rank
         FROM produto_ranked
         WHERE rn <= 3

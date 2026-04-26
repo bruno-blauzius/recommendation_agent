@@ -13,6 +13,7 @@ _PRODUTO_VALIDO = {
     "seguradora": "Porto Seguro",
     "score_relevancia": 0.85,
     "valor": "R$ 150/mês",
+    "logo_url": "https://example.com/porto-seguro-logo.png",
     "justificativa": "65% dos clientes da região sul contrataram este produto",
 }
 
@@ -134,3 +135,33 @@ def test_recomendacao_output_deserializa_de_json():
 def test_recomendacao_output_json_invalido_levanta_erro():
     with pytest.raises(Exception):
         RecomendacaoOutput.model_validate_json('{"invalido": true}')
+
+
+# ---------------------------------------------------------------------------
+# ProdutoRecomendado — validação de logo_url
+# ---------------------------------------------------------------------------
+
+
+def test_produto_recomendado_logo_url_obrigatorio_ausente_levanta_erro():
+    dados = {k: v for k, v in _PRODUTO_VALIDO.items() if k != "logo_url"}
+    with pytest.raises(ValidationError, match="logo_url"):
+        ProdutoRecomendado(**dados)
+
+
+def test_produto_recomendado_logo_url_com_url_valida():
+    p = ProdutoRecomendado(
+        **{**_PRODUTO_VALIDO, "logo_url": "https://seguradora.com/logo.png"}
+    )
+    assert p.logo_url == "https://seguradora.com/logo.png"
+
+
+def test_produto_recomendado_logo_url_com_string_qualquer():
+    p = ProdutoRecomendado(**{**_PRODUTO_VALIDO, "logo_url": "logo.png"})
+    assert p.logo_url == "logo.png"
+
+
+def test_recomendacao_output_serializa_logo_url_no_json():
+    out = RecomendacaoOutput(**_OUTPUT_VALIDO)
+    payload = out.model_dump_json()
+    assert "logo_url" in payload
+    assert "porto-seguro-logo" in payload

@@ -20,12 +20,17 @@ recommendation_products:
        - idade (converta para faixa_etaria: 18-25, 26-35, 36-45, 46-55, 56-65, 66+)
        - regiao (sul, sudeste, nordeste, centro-oeste, norte)
        - genero (masculino, feminino, nao_informado) — se mencionado
-       - produto ou ramo de interesse — se mencionado
+       - produto ou ramo JA CONTRATADO ou EM COTACAO — se mencionado (sera excluido das recomendacoes)
     2. Chame `buscar_por_similaridade_semantica` com o texto descritivo do perfil.
     3. Chame `buscar_perfis_similares` com a regiao e faixa_etaria identificadas.
     4. Chame `buscar_produtos_populares` com a regiao e, se disponivel, o genero.
-    5. Analise os dados retornados pelas ferramentas e identifique os produtos
-       com maior frequencia de contratacao e maior score de propensao.
+    5. Analise os dados retornados pelas ferramentas. Para cada produto/ramo
+       relevante, considere CADA seguradora como uma oferta independente.
+       Se o mesmo ramo aparece com mais de uma seguradora, inclua cada combinacao
+       (produto + seguradora) como uma recomendacao separada, ate o limite de 3.
+       Ordene por score_relevancia decrescente.
+       IMPORTANTE: use o nome exato da seguradora retornado pelas ferramentas.
+       Nunca substitua por "Seguradora A", "Seguradora B" ou qualquer placeholder.
     6. Retorne o resultado EXCLUSIVAMENTE no seguinte formato JSON, sem texto adicional:
        {
          "cliente_descricao": "<resumo do perfil extraido do prompt>",
@@ -34,7 +39,8 @@ recommendation_products:
            {
              "produto": "<nome do produto>",
              "ramo": "<ramo>",
-             "seguradora": "<seguradora>",
+             "logo_url": "<url do logo da seguradora>",
+             "seguradora": "<nome da seguradora>",
              "score_relevancia": <float entre 0.0 e 1.0>,
              "valor": "<valor medio estimado, ex.: 'R$ 150/mes'>",
              "justificativa": "<percentual ou dado que suporta a recomendacao>"
@@ -47,6 +53,19 @@ recommendation_products:
     - Limite a exatamente 3 recomendacoes, ordenadas por score_relevancia decrescente.
     - Se houver menos de 3 produtos com dados suficientes, retorne apenas os disponiveis.
     - Valor deve ser a média de preço do produto para o perfil identificado, se disponível. Caso contrário, retorne o maior valor disponível.
+    - AGRUPAMENTO POR SEGURADORA: Se uma mesma seguradora tiver múltiplas cotações do mesmo
+      produto/ramo, calcule a MÉDIA de valor entre essas cotações. Exemplo: se Allianz tem
+      "Seguro Auto" a R$ 200/mês e R$ 250/mês em diferentes registros, retorne R$ 225/mês.
+      Use a média para dar ao cliente a visão mais realista do valor esperado.
     - A justificativa deve citar dados concretos, ex.:
       "X% dos clientes da regiao sul na faixa 26-35 contrataram este produto."
     - Se uma ferramenta retornar lista vazia, continue o fluxo com as demais.
+    - EXCLUSAO OBRIGATORIA: Se o prompt mencionar que o cliente acabou de fazer uma
+      cotacao, contratou ou tem interesse em um produto/ramo especifico, EXCLUA esse
+      ramo das recomendacoes. Exemplo: cliente que cotou "auto" nao deve receber
+      recomendacao de ramo "auto". O objetivo e cross-sell, nao vender o mesmo produto.
+    - SEGURADORA REAL: sempre use o nome exato retornado pelas ferramentas.
+      Nunca use placeholders como "Seguradora A", "Seguradora B" etc.
+    - MULTIPLAS SEGURADORAS: se um mesmo ramo/produto tiver mais de uma seguradora
+      nos dados, retorne cada combinacao (produto + seguradora) como item separado
+      nas recomendacoes, ate o limite de 3 itens no total.
