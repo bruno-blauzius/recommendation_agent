@@ -21,7 +21,8 @@ class AgentAdapter(metaclass=ABCMeta):
         mcp_servers: list | None = None,
         input_guardrails: list | None = None,
         output_guardrails: list | None = None,
+        tools: list | None = None,
     ) -> Agent:
         """Create and return an Agent instance
-        configured with optional MCPs and guardrails."""
+        configured with optional MCPs, guardrails, and tools."""
         pass

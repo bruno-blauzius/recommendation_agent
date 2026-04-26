@@ -56,6 +56,7 @@ def test_create_agent_returns_agent_instance(openai_adapter):
         mcp_servers=[],
         input_guardrails=[],
         output_guardrails=[],
+        tools=[],
     )
     assert result is mock_agent
 

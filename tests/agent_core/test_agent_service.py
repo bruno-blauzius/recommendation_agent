@@ -73,6 +73,7 @@ async def test_invoke_calls_create_agent_with_defaults(
         mcp_servers=[],
         input_guardrails=None,
         output_guardrails=None,
+        tools=None,
     )
 
 
@@ -90,6 +91,7 @@ async def test_invoke_passes_input_guardrails_to_create_agent(
         mcp_servers=[],
         input_guardrails=[guardrail],
         output_guardrails=None,
+        tools=None,
     )
 
 
@@ -107,6 +109,7 @@ async def test_invoke_passes_output_guardrails_to_create_agent(
         mcp_servers=[],
         input_guardrails=None,
         output_guardrails=[guardrail],
+        tools=None,
     )
 
 

@@ -12,6 +12,7 @@ _PRODUTO_VALIDO = {
     "ramo": "auto",
     "seguradora": "Porto Seguro",
     "score_relevancia": 0.85,
+    "valor": "R$ 150/mês",
     "justificativa": "65% dos clientes da região sul contrataram este produto",
 }
 
@@ -33,7 +34,19 @@ def test_produto_recomendado_instancia_com_dados_validos():
     assert p.ramo == "auto"
     assert p.seguradora == "Porto Seguro"
     assert p.score_relevancia == 0.85
+    assert p.valor == "R$ 150/mês"
     assert "65%" in p.justificativa
+
+
+def test_produto_recomendado_valor_obrigatorio_ausente_levanta_erro():
+    dados = {k: v for k, v in _PRODUTO_VALIDO.items() if k != "valor"}
+    with pytest.raises(ValidationError, match="valor"):
+        ProdutoRecomendado(**dados)
+
+
+def test_produto_recomendado_valor_aceita_string_formatada():
+    p = ProdutoRecomendado(**{**_PRODUTO_VALIDO, "valor": "R$ 299,90/mês"})
+    assert p.valor == "R$ 299,90/mês"
 
 
 def test_produto_recomendado_score_limite_inferior():

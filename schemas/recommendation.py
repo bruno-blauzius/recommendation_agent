@@ -8,6 +8,7 @@ class ProdutoRecomendado(BaseModel):
     score_relevancia: float = Field(
         ge=0.0, le=1.0, description="Relevância de 0.0 a 1.0"
     )
+    valor: str = Field(description="Valor médio do produto, ex.: 'R$ 150/mês'")
     justificativa: str = Field(
         description=(
             "Justificativa baseada nos dados de outros clientes, "

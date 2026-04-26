@@ -15,6 +15,7 @@ class AgentOpenAI(AgentAdapter):
         mcp_servers: list | None = None,
         input_guardrails: list | None = None,
         output_guardrails: list | None = None,
+        tools: list | None = None,
     ) -> Agent:
         try:
             return Agent(
@@ -24,6 +25,7 @@ class AgentOpenAI(AgentAdapter):
                 mcp_servers=mcp_servers or [],
                 input_guardrails=input_guardrails or [],
                 output_guardrails=output_guardrails or [],
+                tools=tools or [],
             )
         except Exception as e:
             raise RuntimeError(f"Failed to create OpenAI agent: {str(e)}")

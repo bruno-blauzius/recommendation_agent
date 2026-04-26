@@ -43,12 +43,14 @@ class AgentService:
         mcp_servers: list[MCPServerStdio] | None = None,
         input_guardrails: list | None = None,
         output_guardrails: list | None = None,
+        tools: list | None = None,
     ) -> dict:
         mcp_list = mcp_servers or []
         agent = self.adapter.create_agent(
             mcp_servers=mcp_list,
             input_guardrails=input_guardrails,
             output_guardrails=output_guardrails,
+            tools=tools,
         )
 
         last_error: Exception | None = None
