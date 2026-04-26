@@ -90,7 +90,7 @@ python manage.py migrate
 Isso irá:
 - Criar a tabela `schema_migrations` para rastrear migrations executadas
 - Executar o arquivo `001_initial_database.sql`:
-  - Cria extensões (`uuid-ossp`, `pgvector`)
+  - Cria extensões (`uuid-ossp`, `vector`)
   - Cria tabelas (`clientes`, `cotacoes`, `apolices`)
   - Cria índices para otimizar queries
 - Registrar cada migration na tabela `schema_migrations`

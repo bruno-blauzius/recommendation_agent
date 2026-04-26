@@ -16,6 +16,9 @@ _DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
 _DB_HOST = os.getenv("DB_HOST", "localhost")
 _DB_PORT = os.getenv("DB_PORT", "5432")
 _DB_NAME = os.getenv("DB_NAME", "recommendation_agent")
+__POSTGRES_DSN = (
+    f"postgresql://{_DB_USER}:{_DB_PASSWORD}@{_DB_HOST}:{_DB_PORT}/{_DB_NAME}"
+)
 
 _REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 _REDIS_PORT = os.getenv("REDIS_PORT", "6379")
@@ -46,3 +49,8 @@ _AGENT_MAX_CONCURRENCY = int(os.getenv("AGENT_MAX_CONCURRENCY", "10"))
 _AGENT_DISPATCH_TIMEOUT = float(os.getenv("AGENT_DISPATCH_TIMEOUT_SECONDS", "300"))
 
 _GPT_MODEL_TEXT = os.getenv("GPT_MODEL_TEXT", "gpt-4o-mini")
+
+# OpenAI Embeddings
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "1536"))
