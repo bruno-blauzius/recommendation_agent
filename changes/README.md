@@ -18,6 +18,7 @@ Cada GMUD documenta o objetivo, escopo, implementação, impacto e plano de roll
 | [GMUD-007](GMUD-007-otimizacao-dockerfile-smoketest.md) | Otimização do Dockerfile e Pipeline do Smoke Test | Melhoria / Performance / Qualidade | 2026-04-19 | ✅ Implementado |
 | [GMUD-008](GMUD-008-rabbitmq-mcp-singleton-escalabilidade.md) | RabbitMQ, MCP Singleton e Melhorias de Escalabilidade | Melhoria / Performance / Escalabilidade | 2026-04-20 | ✅ Implementado |
 | [GMUD-009](GMUD-009-seguranca-observabilidade-lgpd-testes.md) | Segurança, Observabilidade, Guardrails LGPD e Cobertura de Testes | Segurança / Qualidade / Conformidade | 2026-04-21 | ✅ Implementado |
+| [GMUD-010](GMUD-010-recomendacao-produtos-logo-seguradora-modelsettings.md) | Recomendação de Produtos: Seguradora Real, Logo e Compatibilidade com ModelSettings | Melhoria / Correção / Qualidade | 2026-04-26 | ✅ Implementado |
 
 ---
 
@@ -118,3 +119,11 @@ Consolidação de correções de segurança, bugs de runtime e conformidade LGPD
 | Guardrail `check_topic` | Input guardrail — bloqueia solicitações de dados pessoais (CPF, email, telefone) |
 | Guardrail `check_output` | Output guardrail — bloqueia respostas com senhas, tokens, documentos |
 | `send_message_broker.py` | Script local para envio de mensagens de teste ao RabbitMQ no Docker |
+
+---
+
+### GMUD-010 — Recomendação de Produtos: Seguradora Real, Logo e Compatibilidade com ModelSettings
+Consolidação das últimas melhorias no agente de recomendação de produtos: saída tipada com `logo_url`, ETL enriquecido com `logo_url` por seguradora, regras de instrução para uso de seguradoras reais e agregação de valores por seguradora, robustez de retry/validação no serviço e correção de runtime no adapter OpenAI (`model_settings` como instância de `ModelSettings`).
+
+**Resultado dos testes:** 203 testes passando (execução sem dependências externas)
+**Principais arquivos:** `schemas/recommendation.py`, `etl/client_profile_enriched.py`, `services/agent_recommendation_products.py`, `agent_core/agent_openai.py`, `tests/schemas/test_recommendation.py`, `tests/services/test_agent_recommendation_products.py`, `tests/agent_core/test_agent_openai.py`

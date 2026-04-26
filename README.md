@@ -1,6 +1,6 @@
 # Recommendation Agent
 
-**Version:** 1.6.0
+**Version:** 1.8.0
 
 Agente de recomendação de produtos de seguro baseado em LLM. O sistema processa dados de cotações e apólices, constrói uma base de conhecimento vetorial e expõe um agente capaz de recomendar produtos, coberturas e ações personalizadas ao segurado — consultando apenas conhecimento processado, sem acesso direto aos dados brutos.
 
